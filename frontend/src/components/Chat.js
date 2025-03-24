@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PaperAirplaneIcon, SparklesIcon, PlayIcon } from '@heroicons/react/24/solid';
-import { API_ENDPOINTS } from '../config';
+import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { API_ENDPOINTS, CHAT_CONFIG } from '../config';
 
 function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isRunningPython, setIsRunningPython] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -17,47 +16,32 @@ function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  const runPythonScript = async (code) => {
-    if (isRunningPython) return;
+  const getMessageHistory = () => {
+    const history = [];
+    let userMessage = null;
     
-    setIsRunningPython(true);
-    try {
-      const response = await fetch(API_ENDPOINTS.runPython, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: code
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Ошибка при выполнении Python скрипта');
-      }
-
-      const data = await response.json();
+    // Проходим по сообщениям в обратном порядке
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
       
-      // Добавляем результат выполнения скрипта
-      setMessages(prev => [...prev, {
-        type: 'agent',
-        content: 'Результат выполнения скрипта:',
-        codeSnippets: [{
-          file: 'output.py',
-          code: data.output
-        }],
-        timestamp: new Date().toISOString()
-      }]);
-    } catch (error) {
-      console.error('Error:', error);
-      setMessages(prev => [...prev, {
-        type: 'error',
-        content: 'Ошибка при выполнении Python скрипта',
-        timestamp: new Date().toISOString()
-      }]);
-    } finally {
-      setIsRunningPython(false);
+      if (message.type === 'user') {
+        userMessage = message;
+      } else if (message.type === 'agent' && userMessage) {
+        history.unshift({
+          question: userMessage.content,
+          answer: message.content,
+          timestamp: userMessage.timestamp
+        });
+        userMessage = null;
+      }
+      
+      // Прерываем цикл, если достигли нужного количества пар
+      if (history.length >= CHAT_CONFIG.historyPairs) {
+        break;
+      }
     }
+    
+    return history;
   };
 
   const handleSubmit = async (e) => {
@@ -83,7 +67,8 @@ function Chat() {
         },
         body: JSON.stringify({
           message: input,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          history: getMessageHistory()
         })
       });
 
@@ -96,8 +81,11 @@ function Chat() {
       // Добавляем ответ агента
       const agentMessage = {
         type: 'agent',
-        content: data.explanation,
-        codeSnippets: data.code_snippets,
+        content: data.message,
+        codeSnippets: data.code ? [{
+          file: 'output.py',
+          code: data.code
+        }] : [],
         timestamp: new Date().toISOString()
       };
 
@@ -150,14 +138,6 @@ function Chat() {
                     <div key={idx} className="bg-dark-900 text-white p-4 rounded-xl shadow-lg">
                       <div className="flex justify-between items-center mb-2">
                         <p className="text-xs text-accent-purple font-mono">{snippet.file}</p>
-                        <button
-                          onClick={() => runPythonScript(snippet.code)}
-                          disabled={isRunningPython}
-                          className="flex items-center space-x-1 text-xs text-accent-purple hover:text-accent-blue transition-colors duration-200 disabled:opacity-50"
-                        >
-                          <PlayIcon className="h-4 w-4" />
-                          <span>Запустить</span>
-                        </button>
                       </div>
                       <pre className="text-sm font-mono overflow-x-auto">
                         <code className="text-gray-300">{snippet.code}</code>

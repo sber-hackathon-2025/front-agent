@@ -5,4 +5,8 @@ export const API_ENDPOINTS = {
   search: `${API_URL}/api/search`,
   documentation: `${API_URL}/api/documentation`,
   runPython: `${API_URL}/api/run-python`
+};
+
+export const CHAT_CONFIG = {
+  historyPairs: 2 // Количество пар сообщений вопрос-ответ в истории
 }; 
