@@ -16,39 +16,28 @@ function Chat() {
     scrollToBottom();
   }, [messages]);
 
+  // Преобразуем последние N сообщений в нужный формат
   const getMessageHistory = () => {
-    const history = [];
-    let userMessage = null;
-    
-    // Проходим по сообщениям в обратном порядке
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      
-      if (message.type === 'user') {
-        userMessage = message;
-      } else if (message.type === 'agent' && userMessage) {
-        history.unshift({
-          question: userMessage.content,
-          answer: message.content,
-          timestamp: userMessage.timestamp
-        });
-        userMessage = null;
+    // Получаем последние N сообщений
+    const lastMessages = messages.slice(-CHAT_CONFIG.historyMessages);
+    return lastMessages.map(msg => {
+      // Базовый объект сообщения
+      const messageObj = {
+        role: msg.type === 'user' ? 'user' : (msg.role || 'assistant'),
+        content: msg.content || ''
+      };
+      // Добавляем function_call только если он есть и это объект
+      if (msg.function_call && typeof msg.function_call === 'object') {
+        messageObj.function_call = msg.function_call;
       }
-      
-      // Прерываем цикл, если достигли нужного количества пар
-      if (history.length >= CHAT_CONFIG.historyPairs) {
-        break;
-      }
-    }
-    
-    return history;
+      return messageObj;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    // Добавляем сообщение пользователя
     const userMessage = {
       type: 'user',
       content: input,
@@ -60,15 +49,22 @@ function Chat() {
     setIsLoading(true);
 
     try {
+      // Формируем список сообщений: N последних + текущее
+      const allMessages = [
+        ...getMessageHistory(),
+        { 
+          role: 'user', 
+          content: input
+        }
+      ];
+
       const response = await fetch(API_ENDPOINTS.chat, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: input,
-          timestamp: new Date().toISOString(),
-          history: getMessageHistory()
+          messages: allMessages
         })
       });
 
@@ -77,22 +73,27 @@ function Chat() {
       }
 
       const data = await response.json();
+      
+      // Обрабатываем список сообщений от сервера
+      data.forEach(message => {
+        // Добавляем сообщение в чат
+        const agentMessage = {
+          type: message.role === 'user' ? 'user' : 'agent',
+          content: message.content || '',
+          role: message.role,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Добавляем function_call только если он есть и это объект
+        if (message.function_call && typeof message.function_call === 'object') {
+          agentMessage.function_call = message.function_call;
+        }
+        
+        setMessages(prev => [...prev, agentMessage]);
+      });
 
-      // Добавляем ответ агента
-      const agentMessage = {
-        type: 'agent',
-        content: data.message,
-        codeSnippets: data.code ? [{
-          file: 'output.py',
-          code: data.code
-        }] : [],
-        timestamp: new Date().toISOString()
-      };
-
-      setMessages(prev => [...prev, agentMessage]);
     } catch (error) {
       console.error('Error:', error);
-      // Добавляем сообщение об ошибке
       setMessages(prev => [...prev, {
         type: 'error',
         content: 'Произошла ошибка при обработке запроса',
@@ -132,20 +133,6 @@ function Chat() {
               }`}
             >
               <p className="text-sm leading-relaxed">{message.content}</p>
-              {message.codeSnippets && (
-                <div className="mt-4 space-y-3">
-                  {message.codeSnippets.map((snippet, idx) => (
-                    <div key={idx} className="bg-dark-900 text-white p-4 rounded-xl shadow-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs text-accent-purple font-mono">{snippet.file}</p>
-                      </div>
-                      <pre className="text-sm font-mono overflow-x-auto">
-                        <code className="text-gray-300">{snippet.code}</code>
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         ))}
