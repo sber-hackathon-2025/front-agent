@@ -36,7 +36,7 @@ npm start
 ## Структура проекта
 
 ```
-code-search-chat/
+front-agent/
 └── frontend/                 # React приложение
     ├── src/
     │   ├── components/      # React компоненты
