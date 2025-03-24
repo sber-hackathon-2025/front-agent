@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { API_ENDPOINTS } from '../config';
 
 function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -16,7 +18,7 @@ function Chat() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     // Добавляем сообщение пользователя
     const userMessage = {
@@ -27,26 +29,31 @@ function Chat() {
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
 
     try {
-      // Здесь будет запрос к внешнему API
-      // Пример ответа для демонстрации
-      const mockResponse = {
-        explanation: "Найдены релевантные фрагменты кода",
-        code_snippets: [
-          {
-            file: "example.js",
-            code: "function example() {\n  return 'Hello World';\n}",
-            relevance: 0.95
-          }
-        ]
-      };
+      const response = await fetch(API_ENDPOINTS.chat, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: input,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при получении ответа от сервера');
+      }
+
+      const data = await response.json();
 
       // Добавляем ответ агента
       const agentMessage = {
         type: 'agent',
-        content: mockResponse.explanation,
-        codeSnippets: mockResponse.code_snippets,
+        content: data.explanation,
+        codeSnippets: data.code_snippets,
         timestamp: new Date().toISOString()
       };
 
@@ -59,6 +66,8 @@ function Chat() {
         content: 'Произошла ошибка при обработке запроса',
         timestamp: new Date().toISOString()
       }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -117,11 +126,13 @@ function Chat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Введите ваш запрос..."
-            className="flex-1 rounded-xl border border-dark-200 px-6 py-3 focus:outline-none focus:ring-2 focus:ring-accent-purple focus:border-transparent transition-all duration-200"
+            disabled={isLoading}
+            className="flex-1 rounded-xl border border-dark-200 px-6 py-3 focus:outline-none focus:ring-2 focus:ring-accent-purple focus:border-transparent transition-all duration-200 disabled:opacity-50"
           />
           <button
             type="submit"
-            className="bg-gradient-to-r from-accent-purple to-accent-blue text-white rounded-xl px-6 py-3 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent-purple focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
+            disabled={isLoading}
+            className="bg-gradient-to-r from-accent-purple to-accent-blue text-white rounded-xl px-6 py-3 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent-purple focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <PaperAirplaneIcon className="h-5 w-5" />
           </button>
