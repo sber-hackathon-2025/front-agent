@@ -62,6 +62,7 @@ function Chat() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           messages: allMessages
@@ -69,32 +70,40 @@ function Chat() {
       });
 
       if (!response.ok) {
-        throw new Error('Ошибка при получении ответа от сервера');
+        const errorText = await response.text();
+        console.error('Ошибка сервера:', response.status, errorText);
+        throw new Error(`Ошибка сервера: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Получен ответ:', JSON.stringify(data, null, 2));
       
-      // Обрабатываем список сообщений от сервера
-      data.forEach(message => {
-        // Пропускаем сообщения с пустым content
-        if (!message.content) return;
+      // Проверяем наличие поля answer в ответе
+      if (data.answer && Array.isArray(data.answer)) {
+        // Обрабатываем список сообщений из поля answer
+        data.answer.forEach(message => {
+          // Пропускаем сообщения с пустым content
+          if (!message.content) return;
 
-        // Добавляем сообщение в чат
-        const agentMessage = {
-          type: message.role === 'user' ? 'user' : 'agent',
-          content: message.content,
-          // Если роль была function_call, меняем на function
-          role: message.role === 'function_call' ? 'function' : message.role,
-          timestamp: new Date().toISOString()
-        };
-        
-        // Добавляем function_call только если он есть и это объект
-        if (message.function_call && typeof message.function_call === 'object') {
-          agentMessage.function_call = message.function_call;
-        }
-        
-        setMessages(prev => [...prev, agentMessage]);
-      });
+          // Добавляем сообщение в чат
+          const agentMessage = {
+            type: message.role === 'user' ? 'user' : 'agent',
+            content: message.content,
+            // Если роль была function_call, меняем на function
+            role: message.role === 'function_call' ? 'function' : message.role,
+            timestamp: new Date().toISOString()
+          };
+          
+          // Добавляем function_call только если он есть и это объект
+          if (message.function_call && typeof message.function_call === 'object') {
+            agentMessage.function_call = message.function_call;
+          }
+          
+          setMessages(prev => [...prev, agentMessage]);
+        });
+      } else {
+        throw new Error('Некорректный формат ответа от сервера');
+      }
 
     } catch (error) {
       console.error('Error:', error);
