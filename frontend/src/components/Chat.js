@@ -120,7 +120,13 @@ function Chat() {
 
       {/* Область сообщений */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.map((message, index) => (
+        {messages
+          .filter(message => 
+            (message.role === 'assistant' || message.type === 'user') && 
+            message.content && 
+            message.content.trim() !== ''
+          )
+          .map((message, index) => (
           <div
             key={index}
             className={`flex ${
@@ -131,8 +137,6 @@ function Chat() {
               className={`max-w-[70%] rounded-2xl p-4 shadow-lg ${
                 message.type === 'user'
                   ? 'bg-gradient-to-r from-accent-purple to-accent-blue text-white'
-                  : message.type === 'error'
-                  ? 'bg-red-50 text-red-800 border border-red-200'
                   : 'bg-white text-dark-800 border border-dark-200'
               }`}
             >
