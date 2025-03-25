@@ -46,7 +46,7 @@ async def chat(request: Request):
             }
         },
         {
-            "role": "function_call",
+            "role": "function",
             "content": "Hello function_call :)",
         },
         {
