@@ -20,6 +20,8 @@ function Chat() {
   const getMessageHistory = () => {
     // Получаем последние N сообщений
     const lastMessages = messages.slice(-CHAT_CONFIG.historyMessages);
+    console.log('История сообщений:', lastMessages);
+    
     return lastMessages.map(msg => {
       // Базовый объект сообщения
       const messageObj = {
@@ -58,6 +60,11 @@ function Chat() {
         }
       ];
 
+      console.log('Отправляем запрос на:', API_ENDPOINTS.chat);
+      console.log('Тело запроса:', JSON.stringify({
+        messages: allMessages
+      }, null, 2));
+
       const response = await fetch(API_ENDPOINTS.chat, {
         method: 'POST',
         headers: {
@@ -82,13 +89,10 @@ function Chat() {
       if (data.answer && Array.isArray(data.answer)) {
         // Обрабатываем список сообщений из поля answer
         data.answer.forEach(message => {
-          // Пропускаем сообщения с пустым content
-          if (!message.content) return;
-
           // Добавляем сообщение в чат
           const agentMessage = {
             type: message.role === 'user' ? 'user' : 'agent',
-            content: message.content,
+            content: message.content || '',
             // Если роль была function_call, меняем на function
             role: message.role === 'function_call' ? 'function' : message.role,
             timestamp: new Date().toISOString()
