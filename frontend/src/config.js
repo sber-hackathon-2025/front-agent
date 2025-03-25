@@ -8,5 +8,5 @@ export const API_ENDPOINTS = {
 };
 
 export const CHAT_CONFIG = {
-  historyMessages: 4 // Количество последних сообщений в истории (+ 1 новое сообщение)
+  historyMessages: 3 // Количество последних сообщений пользователя в истории
 }; 

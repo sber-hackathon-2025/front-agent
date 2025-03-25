@@ -16,13 +16,25 @@ function Chat() {
     scrollToBottom();
   }, [messages]);
 
-  // Преобразуем последние N сообщений в нужный формат
+  // Преобразуем сообщения в нужный формат, учитывая N последних сообщений пользователя
   const getMessageHistory = () => {
-    // Получаем последние N сообщений
-    const lastMessages = messages.slice(-CHAT_CONFIG.historyMessages);
-    console.log('История сообщений:', lastMessages);
+    // Находим индексы последних N сообщений пользователя
+    const userMessageIndices = messages
+      .map((msg, index) => msg.type === 'user' ? index : -1)
+      .filter(index => index !== -1)
+      .slice(-CHAT_CONFIG.historyMessages);
+
+    // Если нет сообщений пользователя, возвращаем пустой массив
+    if (userMessageIndices.length === 0) {
+      return [];
+    }
+
+    // Берём все сообщения, начиная с первого из N последних сообщений пользователя
+    const relevantMessages = messages.slice(userMessageIndices[0]);
     
-    return lastMessages.map(msg => {
+    console.log('История сообщений:', relevantMessages);
+    
+    return relevantMessages.map(msg => {
       // Базовый объект сообщения
       const messageObj = {
         role: msg.type === 'user' ? 'user' : (msg.role === 'function_call' ? 'function' : (msg.role || 'assistant')),
