@@ -23,7 +23,7 @@ function Chat() {
     return lastMessages.map(msg => {
       // Базовый объект сообщения
       const messageObj = {
-        role: msg.type === 'user' ? 'user' : (msg.role || 'assistant'),
+        role: msg.type === 'user' ? 'user' : (msg.role === 'function_call' ? 'function' : (msg.role || 'assistant')),
         content: msg.content || ''
       };
       // Добавляем function_call только если он есть и это объект
@@ -76,11 +76,15 @@ function Chat() {
       
       // Обрабатываем список сообщений от сервера
       data.forEach(message => {
+        // Пропускаем сообщения с пустым content
+        if (!message.content) return;
+
         // Добавляем сообщение в чат
         const agentMessage = {
           type: message.role === 'user' ? 'user' : 'agent',
-          content: message.content || '',
-          role: message.role,
+          content: message.content,
+          // Если роль была function_call, меняем на function
+          role: message.role === 'function_call' ? 'function' : message.role,
           timestamp: new Date().toISOString()
         };
         
