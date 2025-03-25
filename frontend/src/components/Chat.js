@@ -165,7 +165,11 @@ function Chat() {
                   : 'bg-white text-dark-800 border border-dark-200'
               }`}
             >
-              <p className="text-sm leading-relaxed">{message.content}</p>
+              {message.content.includes('```') ? (
+                <pre className="text-sm leading-relaxed whitespace-pre-wrap font-mono">{message.content}</pre>
+              ) : (
+                <p className="text-sm leading-relaxed">{message.content}</p>
+              )}
             </div>
           </div>
         ))}
